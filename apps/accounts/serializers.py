@@ -244,6 +244,49 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
 
 
 # ─────────────────────────────────────────────
+# Driver self-registration
+# ─────────────────────────────────────────────
+class RegisterDriverSerializer(serializers.Serializer):
+    """All fields required to create a driver account + DriverProfile in one step.
+
+    On success the account exists with role=driver, approval_status=pending.
+    No JWT is returned — driver goes to a "pending" screen and logs in after approval.
+    """
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True, min_length=8)
+    confirm_password = serializers.CharField(write_only=True)
+    full_name = serializers.CharField(min_length=2, max_length=150)
+    phone = serializers.CharField(required=False, allow_blank=True, max_length=20)
+
+    vehicle_make = serializers.CharField(max_length=50)
+    vehicle_model = serializers.CharField(max_length=50)
+    vehicle_year = serializers.IntegerField(min_value=1990, max_value=2030)
+    license_plate = serializers.CharField(max_length=20)
+
+    available_days = serializers.ListField(
+        child=serializers.CharField(max_length=20),
+        min_length=1,
+    )
+    available_hours = serializers.ChoiceField(
+        choices=["morning", "afternoon", "evening", "flexible"],
+        default="flexible",
+    )
+
+    def validate_email(self, value):
+        value = value.lower().strip()
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("An account with this email already exists.")
+        return value
+
+    def validate(self, attrs):
+        if attrs["password"] != attrs["confirm_password"]:
+            raise serializers.ValidationError({"confirm_password": "Passwords do not match."})
+        validate_password(attrs["password"])
+        attrs.pop("confirm_password")
+        return attrs
+
+
+# ─────────────────────────────────────────────
 # Admin: create operator
 # ─────────────────────────────────────────────
 class CreateOperatorSerializer(serializers.Serializer):

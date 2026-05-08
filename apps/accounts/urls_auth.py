@@ -7,12 +7,14 @@ from .views import (
     PasswordChangeView,
     PasswordResetConfirmView,
     PasswordResetRequestView,
+    RegisterDriverView,
     RegisterView,
     TokenRefreshThrottledView,
 )
 
 urlpatterns = [
     path("register/", RegisterView.as_view(), name="auth-register"),
+    path("register/driver/", RegisterDriverView.as_view(), name="auth-register-driver"),
     path("login/", LoginView.as_view(), name="auth-login"),
     path("token/refresh/", TokenRefreshThrottledView.as_view(), name="auth-token-refresh"),
     path("logout/", LogoutView.as_view(), name="auth-logout"),

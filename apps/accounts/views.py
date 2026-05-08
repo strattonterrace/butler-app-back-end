@@ -26,6 +26,7 @@ from .serializers import (
     PasswordChangeSerializer,
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
+    RegisterDriverSerializer,
     RegisterSerializer,
     UserSerializer,
     UserUpdateSerializer,
@@ -74,6 +75,29 @@ class LoginView(TokenObtainPairView):
             user = User.objects.get(email=request.data.get("email", "").lower().strip())
             user_logged_in.send(sender=user.__class__, request=request, user=user)
         return response
+
+
+class RegisterDriverView(APIView):
+    """POST /api/v1/auth/register/driver/
+
+    Creates a driver account + DriverProfile in pending state.
+    Returns { detail, user } — no JWT. Driver logs in after admin approval.
+    """
+    permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth_register"
+
+    def post(self, request):
+        s = RegisterDriverSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
+        user = services.register_driver(**s.validated_data)
+        return Response(
+            {
+                "detail": "Application submitted. You will be notified once approved.",
+                "user": UserSerializer(user).data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class TokenRefreshThrottledView(TokenRefreshView):

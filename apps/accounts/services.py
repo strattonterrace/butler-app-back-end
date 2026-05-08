@@ -53,6 +53,47 @@ def register_user(*, email: str, password: str, full_name: str, phone: str = "")
     return user
 
 
+@transaction.atomic
+def register_driver(
+    *,
+    email: str,
+    password: str,
+    full_name: str,
+    phone: str = "",
+    vehicle_make: str,
+    vehicle_model: str,
+    vehicle_year: int,
+    license_plate: str,
+    available_days: list,
+    available_hours: str = "flexible",
+) -> User:
+    """Create a driver account + DriverProfile in pending state.
+
+    The driver cannot access driver-only endpoints until an admin sets
+    DriverProfile.approval_status = 'approved'.
+    """
+    from apps.drivers.models import DriverProfile
+
+    user = User.objects.create_user(
+        email=email,
+        password=password,
+        full_name=full_name,
+        phone=phone or "",
+        role=Role.DRIVER,
+    )
+    DriverProfile.objects.create(
+        user=user,
+        vehicle_make=vehicle_make,
+        vehicle_model=vehicle_model,
+        vehicle_year=int(vehicle_year),
+        license_plate=license_plate,
+        available_days=available_days,
+        available_hours=available_hours,
+    )
+    logger.info("driver application submitted: %s", user.email)
+    return user
+
+
 def change_password(*, user: User, current_password: str, new_password: str) -> None:
     """Logged-in password change. Verifies current_password, sets new.
     Raises ValidationError on wrong current_password or weak new_password.
