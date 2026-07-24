@@ -4,6 +4,7 @@ from django.urls import path
 from .views import (
     LoginView,
     LogoutView,
+    OnboardingView,
     PasswordChangeView,
     PasswordResetConfirmView,
     PasswordResetRequestView,
@@ -15,6 +16,7 @@ from .views import (
 urlpatterns = [
     path("register/", RegisterView.as_view(), name="auth-register"),
     path("register/driver/", RegisterDriverView.as_view(), name="auth-register-driver"),
+    path("onboarding/", OnboardingView.as_view(), name="auth-onboarding"),
     path("login/", LoginView.as_view(), name="auth-login"),
     path("token/refresh/", TokenRefreshThrottledView.as_view(), name="auth-token-refresh"),
     path("logout/", LogoutView.as_view(), name="auth-logout"),

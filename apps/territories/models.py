@@ -34,6 +34,13 @@ class Territory(models.Model):
         db_index=True,
     )
 
+    # Served ZIP codes — the onboarding location gate matches against these.
+    # A new city goes live by adding a Territory row with its ZIPs; no code change.
+    zip_codes = models.JSONField(
+        default=list, blank=True,
+        help_text="List of served ZIP codes, e.g. ['92618', '92660'].",
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -44,3 +51,33 @@ class Territory(models.Model):
 
     def __str__(self):
         return self.name
+
+    def serves_zip(self, zip_code: str) -> bool:
+        return str(zip_code).strip() in {str(z).strip() for z in (self.zip_codes or [])}
+
+
+class WaitlistEntry(models.Model):
+    """Someone who wanted Butler but isn't in a served area yet.
+
+    Every out-of-area signup lands here — this doubles as the demand map that
+    tells Butler where to expand next.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    email = models.EmailField(db_index=True)
+    zip_code = models.CharField(max_length=12, blank=True, default="")
+    full_name = models.CharField(max_length=150, blank=True, default="")
+    note = models.CharField(max_length=500, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = "territories_waitlistentry"
+        ordering = ["-created_at"]
+        verbose_name_plural = "Waitlist entries"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["email", "zip_code"], name="unique_waitlist_email_zip",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.email} ({self.zip_code or 'no zip'})"

@@ -4,7 +4,7 @@ services:
   - type: web
     name: butler-api
     runtime: python
-    buildCommand: pip install -r requirements.txt && python manage.py migrate --noinput && python manage.py collectstatic --noinput && python manage.py ensure_admin
+    buildCommand: pip install -r requirements.txt && python manage.py migrate --noinput && python manage.py collectstatic --noinput && python manage.py ensure_admin && python manage.py seed_launch_territory
     startCommand: gunicorn butler_api.wsgi:application --bind 0.0.0.0:$PORT --workers 3 --timeout 60
     plan: starter
     region: oregon

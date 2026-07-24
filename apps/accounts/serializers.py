@@ -44,6 +44,8 @@ class UserSerializer(serializers.ModelSerializer):
             "vehicle",
             "availability",
             "approval_status",
+            "onboarding_completed",
+            "preferred_services",
             "created_at",
         )
         read_only_fields = ("id", "email", "role", "status", "created_at")
@@ -319,4 +321,13 @@ def build_password_reset_uid_token(user):
     return (
         urlsafe_base64_encode(force_bytes(user.pk)),
         default_token_generator.make_token(user),
+    )
+
+
+class OnboardingSerializer(serializers.Serializer):
+    """Body of POST /auth/onboarding/ — the client signup wizard's final step."""
+    territory_id = serializers.UUIDField()
+    address = serializers.CharField(required=False, allow_blank=True, default="")
+    preferred_services = serializers.ListField(
+        child=serializers.CharField(), required=False, default=list,
     )

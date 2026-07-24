@@ -64,3 +64,4 @@ coverage.xml
 
 # OS
 Thumbs.db
+seed_e2e.py

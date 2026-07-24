@@ -1,4 +1,4 @@
-"""Subscription model — schema only at M1, Stripe wiring lands in M2."""
+"""Subscription models — Stripe billing state + webhook idempotency ledger."""
 import uuid
 from decimal import Decimal
 
@@ -62,3 +62,25 @@ class Subscription(models.Model):
     @property
     def is_active(self):
         return self.status == SubscriptionStatus.ACTIVE
+
+
+class WebhookEvent(models.Model):
+    """Idempotency ledger for Stripe webhooks.
+
+    Stripe retries delivery until it sees a 2xx, and the same event can
+    arrive twice concurrently. The unique stripe_event_id means an event
+    is processed exactly once — the row is inserted in the same
+    transaction as the handler's writes, so a failed handler rolls the
+    ledger entry back and the retry gets a clean run.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    stripe_event_id = models.CharField(max_length=255, unique=True)
+    event_type = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "subscriptions_webhookevent"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.event_type} ({self.stripe_event_id})"

@@ -12,3 +12,4 @@ python-decouple==3.8
 gunicorn==23.0.0
 whitenoise==6.8.2
 sentry-sdk==2.18.0
+stripe==15.3.0

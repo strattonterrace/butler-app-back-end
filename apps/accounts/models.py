@@ -45,6 +45,14 @@ class User(AbstractBaseUser, PermissionsMixin):
         related_name="members",
     )
 
+    # Onboarding — set true once a client finishes the signup wizard
+    # (territory assigned + home address + preferences captured).
+    onboarding_completed = models.BooleanField(default=False)
+    preferred_services = models.JSONField(
+        default=list, blank=True,
+        help_text="Service types the client expects to use most, e.g. ['grocery'].",
+    )
+
     # Django auth flags
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)

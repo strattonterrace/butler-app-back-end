@@ -177,8 +177,11 @@ def delete_account(*, user: User, password: str) -> None:
 def suspend_user(*, target: User, by_admin: User) -> None:
     """Admin-initiated suspension. Idempotent."""
     if target == by_admin:
+        # String message (not a dict) so Django preserves `code` — the
+        # error handler surfaces it as ADMIN_CANNOT_SELF_SUSPEND, not a
+        # generic VALIDATION_ERROR.
         raise ValidationError(
-            {"detail": "An admin cannot suspend their own account."},
+            "An admin cannot suspend their own account.",
             code="ADMIN_CANNOT_SELF_SUSPEND",
         )
     target.status = Status.SUSPENDED
@@ -198,6 +201,45 @@ def reactivate_user(*, target: User, by_admin: User) -> None:
     target.is_active = True
     target.save(update_fields=["status", "is_active"])
     logger.info("user reactivated by admin: target=%s by=%s", target.email, by_admin.email)
+
+
+@transaction.atomic
+def complete_onboarding(*, user: User, territory_id: str,
+                        address: str = "", preferred_services: Optional[list] = None) -> User:
+    """Finish the client signup wizard.
+
+    Assigns the client to their served territory (so requests can be matched to
+    a territory driver), saves their home address as the default, records the
+    services they expect to use, and marks onboarding done. Idempotent — a
+    client can revisit and update their details.
+    """
+    from apps.territories.models import Territory, TerritoryStatus
+
+    try:
+        territory = Territory.objects.get(id=territory_id, status=TerritoryStatus.ACTIVE)
+    except (Territory.DoesNotExist, ValueError, TypeError):
+        # String message keeps the error-envelope code (dict messages drop it).
+        raise ValidationError(
+            "That area isn't served yet.", code="TERRITORY_NOT_SERVED",
+        )
+
+    user.territory = territory
+    user.preferred_services = preferred_services or []
+    user.onboarding_completed = True
+    user.save(update_fields=["territory", "preferred_services", "onboarding_completed"])
+
+    address = (address or "").strip()
+    if address:
+        from .models import SavedAddress
+        # One default per user — clear any prior default before setting this one.
+        SavedAddress.objects.filter(user=user, is_default=True).update(is_default=False)
+        SavedAddress.objects.update_or_create(
+            user=user, label="Home",
+            defaults={"address": address, "is_default": True},
+        )
+
+    logger.info("onboarding completed: %s → %s", user.email, territory.name)
+    return user
 
 
 @transaction.atomic
@@ -221,24 +263,36 @@ def create_operator(*, email: str, full_name: str, password: str,
 # Keeping these as named functions means M2/M3 work is "fill in the body"
 # rather than "add a call site." Architecture > implementation.
 # ─────────────────────────────────────────────
-def _create_stripe_customer(user: User) -> Optional[str]:
-    """Create a Stripe Customer for this user.
+def _create_stripe_customer(user: User) -> None:
+    """Best-effort Stripe Customer creation, deferred to after commit.
 
-    M2: ``stripe.Customer.create(email=user.email, name=user.full_name,
-        metadata={"butler_user_id": str(user.id)})``, then patch the
-    Subscription row with the returned customer.id.
+    Registration must never block on (or fail because of) a Stripe network
+    call — checkout lazily creates the Customer anyway if this didn't run
+    (see apps.subscriptions.services.ensure_stripe_customer). Skipped
+    entirely when Stripe keys aren't configured (dev/test).
     """
-    logger.debug("Stripe customer create pending wire-up: %s", user.email)
-    return None
+    if not settings.STRIPE_SECRET_KEY:
+        return
+
+    def _create():
+        from apps.subscriptions import services as subscription_services
+        try:
+            subscription_services.ensure_stripe_customer(user)
+        except Exception:
+            logger.warning(
+                "eager Stripe customer create failed for %s — will retry "
+                "lazily at checkout", user.email, exc_info=True,
+            )
+
+    transaction.on_commit(_create)
 
 
 def _cancel_subscription_at_period_end(user: User) -> None:
-    """Mark the user's Subscription to cancel at the end of the current period.
-
-    M2: read user.subscription, call stripe.Subscription.modify(
-        sub_id, cancel_at_period_end=True), persist locally on webhook receipt.
-    """
-    logger.debug("Stripe sub cancel pending wire-up: %s", user.email)
+    """Cancel the user's subscription at period end (suspension/self-delete
+    path). Best-effort on the Stripe side — account actions never fail
+    because Stripe is unreachable; failures are logged for manual follow-up."""
+    from apps.subscriptions import services as subscription_services
+    subscription_services.cancel_subscription_best_effort(user)
 
 
 def _unassign_driver_from_open_requests(driver: User) -> None:

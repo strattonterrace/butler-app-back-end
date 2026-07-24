@@ -37,3 +37,37 @@ class AdminUserFactory(UserFactory):
     role = "admin"
     is_staff = True
     is_superuser = True
+
+
+class TerritoryFactory(DjangoModelFactory):
+    class Meta:
+        model = "territories.Territory"
+
+    name = factory.Sequence(lambda n: f"Territory {n}")
+
+
+class DriverProfileFactory(DjangoModelFactory):
+    class Meta:
+        model = "drivers.DriverProfile"
+
+    user = factory.SubFactory(DriverUserFactory)
+    vehicle_make = "Toyota"
+    vehicle_model = "Camry"
+    vehicle_year = 2022
+    license_plate = factory.Sequence(lambda n: f"BTLR{n:03d}")
+    approval_status = "approved"
+    territory = factory.SubFactory(TerritoryFactory)
+
+
+class ServiceRequestFactory(DjangoModelFactory):
+    class Meta:
+        model = "service_requests.ServiceRequest"
+
+    client = factory.SubFactory(ClientUserFactory)
+    service_type = "grocery"
+    title = factory.Sequence(lambda n: f"Errand #{n}")
+    description = "Test errand description"
+    pickup_location = "Trader Joe's, Newport Beach"
+    dropoff_location = "123 Main St, Irvine, CA 92618"
+    urgency = "asap"
+    status = "submitted"

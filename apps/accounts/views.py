@@ -23,6 +23,7 @@ from .serializers import (
     ButlerTokenObtainPairSerializer,
     CreateOperatorSerializer,
     LogoutSerializer,
+    OnboardingSerializer,
     PasswordChangeSerializer,
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
@@ -198,6 +199,27 @@ class MeView(generics.RetrieveUpdateAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class OnboardingView(APIView):
+    """POST /api/v1/auth/onboarding/ — finish the client signup wizard.
+
+    Assigns the client's territory, saves their home address, records the
+    services they expect to use, and flips onboarding_completed. Returns the
+    refreshed user so the frontend store updates in place.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        s = OnboardingSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
+        user = services.complete_onboarding(
+            user=request.user,
+            territory_id=str(s.validated_data["territory_id"]),
+            address=s.validated_data.get("address", ""),
+            preferred_services=s.validated_data.get("preferred_services", []),
+        )
+        return Response(UserSerializer(user, context={"request": request}).data)
+
+
 class UserListView(generics.ListAPIView):
     """GET /api/v1/users/ — admin only."""
     permission_classes = [IsAdmin]
@@ -230,7 +252,19 @@ class UserDetailView(generics.RetrieveUpdateAPIView):
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        old_status = instance.status
         super().update(request, *args, **kwargs)
+
+        # Status flips carry side effects (login block, Stripe cancel,
+        # driver unassignment) that the serializer alone doesn't perform —
+        # route them through the services layer.
+        instance.refresh_from_db()
+        if instance.status != old_status:
+            if instance.status == "suspended":
+                services.suspend_user(target=instance, by_admin=request.user)
+            elif instance.status == "active":
+                services.reactivate_user(target=instance, by_admin=request.user)
+
         return Response(UserSerializer(self.get_object()).data)
 
 

@@ -41,6 +41,11 @@ urlpatterns = [
     # API v1
     path("api/v1/auth/", include("apps.accounts.urls_auth")),
     path("api/v1/users/", include("apps.accounts.urls_users")),
+    path("api/v1/subscriptions/", include("apps.subscriptions.urls")),
+    path("api/v1/requests/", include("apps.requests.urls")),
+    path("api/v1/drivers/", include("apps.drivers.urls")),
+    path("api/v1/admin/", include("apps.admin_api.urls")),
+    path("api/v1/territories/", include("apps.territories.urls")),
 
     # OpenAPI schema + Swagger UI — living contract for frontend integration
     path("api/v1/schema/", SpectacularAPIView.as_view(), name="schema"),
@@ -49,5 +54,4 @@ urlpatterns = [
         SpectacularSwaggerView.as_view(url_name="schema"),
         name="schema-swagger",
     ),
-    # Subscriptions, requests, drivers, admin endpoints land in M2/M3.
 ]
