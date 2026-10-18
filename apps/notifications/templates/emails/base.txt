@@ -1,0 +1,20 @@
+{% autoescape off %}BUTLER - Personal Concierge
+==============================
+
+{{ heading }}
+{% if intro %}
+{{ intro }}
+{% endif %}{% for line in body_lines %}
+{{ line }}
+{% endfor %}{% if info_rows %}
+{% for row in info_rows %}{{ row.label }}: {{ row.value }}
+{% endfor %}{% endif %}{% if cta %}
+{{ cta.text }}:
+{{ cta.url }}
+{% endif %}{% if outro %}
+{{ outro }}
+{% endif %}
+--
+Butler - your personal concierge, on call.
+{{ frontend_url }}
+{% endautoescape %}

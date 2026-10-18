@@ -17,7 +17,6 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
 from django.core.exceptions import ValidationError
-from django.core.mail import send_mail
 from django.db import transaction
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
@@ -50,6 +49,9 @@ def register_user(*, email: str, password: str, full_name: str, phone: str = "")
         role=Role.CLIENT,
     )
     _create_stripe_customer(user)
+    # Branded welcome email, after commit so a rolled-back signup never emails.
+    from apps.notifications import services as notifications
+    transaction.on_commit(lambda: notifications.send_welcome_email(user))
     return user
 
 
@@ -121,17 +123,8 @@ def request_password_reset(*, email: str) -> None:
     token = default_token_generator.make_token(user)
     reset_url = f"{settings.FRONTEND_URL}/reset-password?uid={uid}&token={token}"
 
-    send_mail(
-        subject="Butler — Reset your password",
-        message=(
-            f"Hi {user.full_name},\n\n"
-            f"Click the link below to reset your password:\n{reset_url}\n\n"
-            f"If you didn't request this, ignore this email.\n\n— Butler"
-        ),
-        from_email=f"{settings.FROM_NAME} <{settings.FROM_EMAIL}>",
-        recipient_list=[user.email],
-        fail_silently=True,
-    )
+    from apps.notifications import services as notifications
+    notifications.send_password_reset_email(user, reset_url)
 
 
 def confirm_password_reset(*, uid: str, token: str, new_password: str) -> User:
