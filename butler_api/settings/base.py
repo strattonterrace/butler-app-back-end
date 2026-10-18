@@ -240,7 +240,7 @@ FRONTEND_URL = config("FRONTEND_URL", default="http://localhost:5173")
 # Email (M3 wires Resend; until then console backend)
 # ─────────────────────────────────────────────
 RESEND_API_KEY = config("RESEND_API_KEY", default="")
-FROM_EMAIL = config("FROM_EMAIL", default="hello@butlerapp.com")
+FROM_EMAIL = config("FROM_EMAIL", default="hello@mybutlerclub.com")
 FROM_NAME = config("FROM_NAME", default="Butler")
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
