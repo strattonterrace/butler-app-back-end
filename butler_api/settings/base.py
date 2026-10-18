@@ -198,8 +198,21 @@ SIMPLE_JWT = {
 # ─────────────────────────────────────────────
 # CORS
 # ─────────────────────────────────────────────
-CORS_ALLOWED_ORIGINS = config("CORS_ALLOWED_ORIGINS", default="", cast=Csv())
+# Known production frontends are always allowed; additional origins can be
+# supplied via the CORS_ALLOWED_ORIGINS env var (comma-separated).
+_DEFAULT_CORS_ORIGINS = [
+    "https://mybutlerclub.com",
+    "https://www.mybutlerclub.com",
+    "https://app.mybutlerclub.com",
+    "https://butler-six.vercel.app",
+]
+CORS_ALLOWED_ORIGINS = list(dict.fromkeys(
+    _DEFAULT_CORS_ORIGINS + config("CORS_ALLOWED_ORIGINS", default="", cast=Csv())
+))
 CORS_ALLOW_CREDENTIALS = True
+# Django CSRF trust for the custom domains (harmless for the JWT API; covers
+# any browser POST that Django's CSRF middleware still checks).
+CSRF_TRUSTED_ORIGINS = _DEFAULT_CORS_ORIGINS
 
 # ─────────────────────────────────────────────
 # i18n
