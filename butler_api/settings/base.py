@@ -150,6 +150,14 @@ REST_FRAMEWORK = {
     ),
     "EXCEPTION_HANDLER": "utils.exceptions.custom_exception_handler",
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    # Global rate limiting: every endpoint is capped per the rates below.
+    # Views that set their own throttle_classes (auth login/register/reset use
+    # ScopedRateThrottle) override these for tighter, purpose-specific limits.
+    # Dev/test settings set all rates to None, disabling throttling there.
+    "DEFAULT_THROTTLE_CLASSES": (
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ),
     "DEFAULT_THROTTLE_RATES": {
         "anon": "60/min",
         "user": "120/min",
