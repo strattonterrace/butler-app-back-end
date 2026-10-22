@@ -55,6 +55,8 @@ def _send(*, to, subject, heading, intro="", body_lines=None,
         "outro": outro,
         "frontend_url": frontend,
         "frontend_url_display": frontend.split("://")[-1],
+        "company_address": settings.COMPANY_ADDRESS,
+        "manage_url": f"{frontend}/settings",
     }
     html_body = render_to_string("emails/base.html", context)
     text_body = render_to_string("emails/base.txt", context)

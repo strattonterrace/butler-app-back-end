@@ -17,4 +17,8 @@
 --
 Butler - your personal concierge, on call.
 {{ frontend_url }}
+
+{{ company_address }}
+You're receiving this because you have a Butler account.
+Manage email preferences: {{ manage_url }}
 {% endautoescape %}

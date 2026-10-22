@@ -250,6 +250,10 @@ FRONTEND_URL = config("FRONTEND_URL", default="http://localhost:5173")
 RESEND_API_KEY = config("RESEND_API_KEY", default="")
 FROM_EMAIL = config("FROM_EMAIL", default="hello@mybutlerclub.com")
 FROM_NAME = config("FROM_NAME", default="Butler")
+# Physical mailing address shown in email footers (CAN-SPAM requires a valid
+# postal address). TODO: set COMPANY_ADDRESS env to Butler's real street/PO-box
+# address before heavy email sending — the default below is a placeholder.
+COMPANY_ADDRESS = config("COMPANY_ADDRESS", default="Butler, Orange County, CA")
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 # ─────────────────────────────────────────────
