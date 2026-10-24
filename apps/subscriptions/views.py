@@ -5,6 +5,7 @@ Stripe/network failures surface as 502 PAYMENT_SERVICE_ERROR so the
 frontend can show "payment service unavailable" rather than a validation
 error.
 """
+import json
 import logging
 
 import stripe
@@ -119,7 +120,7 @@ class StripeWebhookView(APIView):
         payload = request.body
         signature = request.META.get("HTTP_STRIPE_SIGNATURE", "")
         try:
-            event = stripe.Webhook.construct_event(
+            stripe.Webhook.construct_event(
                 payload, signature, dj_settings.STRIPE_WEBHOOK_SECRET,
             )
         except (ValueError, stripe.SignatureVerificationError) as exc:
@@ -129,6 +130,13 @@ class StripeWebhookView(APIView):
                  "code": "WEBHOOK_INVALID"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        # construct_event verifies the signature, but the rich StripeObject it
+        # returns wraps nested data in a way whose .get() raises AttributeError
+        # in production (the handlers in webhooks.py rely on plain-dict .get(),
+        # which is also what the tests exercise). Re-parse the already-verified
+        # raw bytes into plain dicts so handlers behave identically everywhere.
+        event = json.loads(payload)
 
         # Idempotency: the ledger insert and the handler's writes share one
         # transaction — a handler crash rolls back the ledger row so

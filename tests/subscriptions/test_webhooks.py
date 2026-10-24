@@ -102,6 +102,31 @@ class TestWebhookSecurity:
         assert resp.status_code == 200
         assert resp.json()["handled"] is False
 
+    def test_handlers_use_verified_body_not_stripe_object(self, api_client, inactive_sub):
+        """Regression: in production construct_event returns rich StripeObjects
+        whose .get() raised AttributeError (→ 500 on every real subscription
+        event). The view must process the already-verified RAW BODY as plain
+        dicts, never that return value."""
+        class BrokenStripeObject(dict):
+            def get(self, *args, **kwargs):  # mimics the prod StripeObject blowup
+                raise AttributeError("get")
+
+        obj = {
+            "customer": "cus_123", "subscription": "sub_rb",
+            "client_reference_id": str(inactive_sub.user_id),
+        }
+        event = make_event("evt_rawbody", "checkout.session.completed", obj)
+        broken = BrokenStripeObject(event)
+        broken["data"] = BrokenStripeObject({"object": BrokenStripeObject(obj)})
+        with patch("stripe.Webhook.construct_event", return_value=broken):
+            resp = api_client.post(
+                URL, data=json.dumps(event), content_type="application/json",
+                HTTP_STRIPE_SIGNATURE="t=1,v1=test",
+            )
+        assert resp.status_code == 200
+        inactive_sub.refresh_from_db()
+        assert inactive_sub.status == SubscriptionStatus.ACTIVE
+
 
 class TestCheckoutCompleted:
     def test_activates_subscription(self, api_client, inactive_sub):
