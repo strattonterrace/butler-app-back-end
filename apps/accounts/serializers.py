@@ -8,7 +8,7 @@ from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import Role, Status, User
+from .models import Role, SavedAddress, Status, User
 
 
 # ─────────────────────────────────────────────
@@ -178,6 +178,32 @@ class UserUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ("full_name", "phone", "avatar")
+
+
+# ─────────────────────────────────────────────
+# Saved addresses (client address book — Settings "Saved Addresses")
+# ─────────────────────────────────────────────
+class SavedAddressSerializer(serializers.ModelSerializer):
+    """One address-book entry. The model's save() enforces a single default
+    per user, so setting isDefault here transparently clears any prior default.
+    Wire names are camelCase (is_default → isDefault) via the global renderer.
+    """
+    class Meta:
+        model = SavedAddress
+        fields = ("id", "label", "address", "is_default", "created_at", "updated_at")
+        read_only_fields = ("id", "created_at", "updated_at")
+
+    def validate_label(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError("Give this address a label (e.g. Home, Work).")
+        return value
+
+    def validate_address(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError("Address can't be empty.")
+        return value
 
 
 # ─────────────────────────────────────────────

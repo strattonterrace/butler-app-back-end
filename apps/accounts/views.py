@@ -6,6 +6,7 @@ view code small and predictable, and means M3 endpoints follow the same
 shape — no view-level rot.
 """
 from django.contrib.auth import user_logged_in
+from django.shortcuts import get_object_or_404
 from rest_framework import generics, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -15,7 +16,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from . import services
-from .models import User
+from .models import SavedAddress, User
 from .permissions import IsAdmin
 from .serializers import (
     AdminUserUpdateSerializer,
@@ -29,6 +30,7 @@ from .serializers import (
     PasswordResetRequestSerializer,
     RegisterDriverSerializer,
     RegisterSerializer,
+    SavedAddressSerializer,
     UserSerializer,
     UserUpdateSerializer,
 )
@@ -277,3 +279,45 @@ class CreateOperatorView(APIView):
         s.is_valid(raise_exception=True)
         user = services.create_operator(by_admin=request.user, **s.validated_data)
         return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
+
+
+# ─────────────────────────────────────────────
+# Saved addresses (client address book)
+# ─────────────────────────────────────────────
+class AddressListCreateView(APIView):
+    """GET / POST /api/v1/users/me/addresses/ — the signed-in user's own
+    address book. Returns a plain array (an address book is small — no
+    pagination envelope). Setting isDefault on create clears any prior
+    default via the model's save()."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        qs = request.user.saved_addresses.all()
+        return Response(SavedAddressSerializer(qs, many=True).data)
+
+    def post(self, request):
+        s = SavedAddressSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
+        s.save(user=request.user)
+        return Response(s.data, status=status.HTTP_201_CREATED)
+
+
+class AddressDetailView(APIView):
+    """PATCH / DELETE /api/v1/users/me/addresses/:id/ — edit or remove one of
+    the user's own addresses. Scoped to request.user so no one can touch
+    another account's entries."""
+    permission_classes = [IsAuthenticated]
+
+    def _get(self, request, pk):
+        return get_object_or_404(SavedAddress, pk=pk, user=request.user)
+
+    def patch(self, request, pk):
+        addr = self._get(request, pk)
+        s = SavedAddressSerializer(addr, data=request.data, partial=True)
+        s.is_valid(raise_exception=True)
+        s.save()
+        return Response(s.data)
+
+    def delete(self, request, pk):
+        self._get(request, pk).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
