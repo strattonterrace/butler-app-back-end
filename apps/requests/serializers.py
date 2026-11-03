@@ -54,6 +54,7 @@ class ServiceRequestListSerializer(serializers.ModelSerializer):
             "dropoff_location",
             "urgency",
             "scheduled_date",
+            "scheduled_time",
             "scheduled_window",
             "status",
             "created_at",
@@ -84,6 +85,7 @@ class ServiceRequestDetailSerializer(serializers.ModelSerializer):
             "dropoff_location",
             "urgency",
             "scheduled_date",
+            "scheduled_time",
             "scheduled_window",
             "special_instructions",
             "estimated_budget",
@@ -149,28 +151,32 @@ class ServiceRequestCreateSerializer(serializers.ModelSerializer):
             "dropoff_location",
             "urgency",
             "scheduled_date",
+            "scheduled_time",
             "scheduled_window",
             "special_instructions",
             "estimated_budget",
         )
         extra_kwargs = {
+            "scheduled_window": {"required": False},
             "special_instructions": {"required": False},
             "estimated_budget": {"required": False},
         }
 
     def validate(self, attrs):
-        # §10: scheduled requests must carry both the date and the window.
+        # Scheduled requests carry the client-dictated date AND time.
+        # (scheduled_window is legacy/optional; the UI now collects a time.)
         if attrs.get("urgency") == Urgency.SCHEDULED:
             missing = {}
             if not attrs.get("scheduled_date"):
                 missing["scheduled_date"] = ["Required when urgency is 'scheduled'."]
-            if not attrs.get("scheduled_window"):
-                missing["scheduled_window"] = ["Required when urgency is 'scheduled'."]
+            if not attrs.get("scheduled_time"):
+                missing["scheduled_time"] = ["Required when urgency is 'scheduled'."]
             if missing:
                 raise serializers.ValidationError(missing)
         else:
-            # ASAP/today requests can't smuggle in a schedule — normalize out.
+            # ASAP requests can't smuggle in a schedule — normalize out.
             attrs["scheduled_date"] = None
+            attrs["scheduled_time"] = None
             attrs["scheduled_window"] = None
         return attrs
 

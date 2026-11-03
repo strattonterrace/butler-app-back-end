@@ -77,6 +77,10 @@ class ServiceRequest(models.Model):
         max_length=20, choices=Urgency.choices, default=Urgency.ASAP, db_index=True,
     )
     scheduled_date = models.DateField(null=True, blank=True)
+    # scheduled_time is the client-dictated pickup time (replaces the old
+    # morning/afternoon/evening window in the UI). scheduled_window is kept
+    # nullable for back-compat with older rows but is no longer collected.
+    scheduled_time = models.TimeField(null=True, blank=True)
     scheduled_window = models.CharField(
         max_length=20, choices=ScheduledWindow.choices, null=True, blank=True,
     )

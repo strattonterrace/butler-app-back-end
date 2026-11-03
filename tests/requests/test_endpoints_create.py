@@ -86,36 +86,37 @@ class TestCreateRequest:
         resp = api_client.post(URL, VALID_BODY, format="json")
         assert resp.status_code == 401
 
-    def test_scheduled_requires_date_and_window(self, auth_client, territory_client):
+    def test_scheduled_requires_date_and_time(self, auth_client, territory_client):
         body = {**VALID_BODY, "urgency": "scheduled"}
         resp = auth_client(territory_client).post(URL, body, format="json")
 
         assert resp.status_code == 400
         errors = resp.json()["errors"]
         assert "scheduledDate" in errors
-        assert "scheduledWindow" in errors
+        assert "scheduledTime" in errors
 
-    def test_scheduled_with_date_and_window_ok(self, auth_client, territory_client):
+    def test_scheduled_with_date_and_time_ok(self, auth_client, territory_client):
         body = {
             **VALID_BODY,
             "urgency": "scheduled",
             "scheduled_date": "2026-07-20",
-            "scheduled_window": "morning",
+            "scheduled_time": "14:30",
         }
         resp = auth_client(territory_client).post(URL, body, format="json")
         assert resp.status_code == 201
         assert resp.json()["scheduledDate"] == "2026-07-20"
+        assert resp.json()["scheduledTime"] == "14:30:00"
 
     def test_asap_request_drops_stray_schedule_fields(self, auth_client, territory_client):
         body = {
             **VALID_BODY,
             "scheduled_date": "2026-07-20",
-            "scheduled_window": "morning",
+            "scheduled_time": "14:30",
         }
         resp = auth_client(territory_client).post(URL, body, format="json")
         assert resp.status_code == 201
         assert resp.json()["scheduledDate"] is None
-        assert resp.json()["scheduledWindow"] is None
+        assert resp.json()["scheduledTime"] is None
 
     def test_missing_required_fields_rejected(self, auth_client, territory_client):
         resp = auth_client(territory_client).post(
