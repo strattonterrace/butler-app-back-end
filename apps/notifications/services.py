@@ -87,7 +87,11 @@ def send_welcome_email(user) -> None:
         body_lines=[
             "You're one step from handing off your errands. Activate your membership "
             "and your personal concierge is on call.",
-            "Groceries, pharmacy runs, dry cleaning, packages — just ask, and we handle it.",
+            "How it works: open the app and tap New Request, then tell us what you need "
+            "picked up, dropped off, or handled — and when. We review it, assign a driver "
+            "in your area, and keep you posted at every step until it's done.",
+            "Groceries, pharmacy runs, dry cleaning, packages, returns, food pickup — "
+            "just ask, and we handle it.",
         ],
         cta={"text": "Activate your membership", "url": _url("subscribe")},
         outro="Welcome aboard.",
